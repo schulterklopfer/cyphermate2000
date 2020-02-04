@@ -543,10 +543,9 @@ void EPD_4IN2_Display(UBYTE *Image)
 
 void EPD_4IN2_PartialDisplay(UWORD X_start,UWORD Y_start,UWORD X_end,UWORD Y_end, UBYTE *Image)
 {
-	UWORD Width, Height;
+	UWORD Width;
     Width = (EPD_4IN2_WIDTH % 8 == 0)? (EPD_4IN2_WIDTH / 8 ): (EPD_4IN2_WIDTH / 8 + 1);
-    Height = EPD_4IN2_HEIGHT;
-	
+
 	X_start = (X_start % 8 == 0)? (X_start): (X_start/8*8+8);
 	X_end = (X_end % 8 == 0)? (X_end): (X_end/8*8+8);
 	
@@ -589,6 +588,72 @@ void EPD_4IN2_PartialDisplay(UWORD X_start,UWORD Y_start,UWORD X_end,UWORD Y_end
 
 	EPD_4IN2_SendCommand(0x12);		 //DISPLAY REFRESH 		             
 	DEV_Delay_ms(10);     //The delay here is necessary, 200uS at least!!!     
+	EPD_4IN2_TurnOnDisplay();
+}
+
+void EPD_4IN2_PartialDisplayMulti(EDP4IN2REDRAWAREA *redraw_areas, UWORD redraw_area_count, UBYTE *Image)
+{
+	UWORD Width, X_start, X_end, Y_start, Y_end;
+    Width = (EPD_4IN2_WIDTH % 8 == 0)? (EPD_4IN2_WIDTH / 8 ): (EPD_4IN2_WIDTH / 8 + 1);
+
+
+	EPD_4IN2_SendCommand(0X50);
+	EPD_4IN2_SendData(0xf7);
+	//DEV_Delay_ms(100);
+	EPD_4IN2_SendCommand(0x82);			//vcom_DC setting
+	EPD_4IN2_SendData (0x08);
+	EPD_4IN2_SendCommand(0X50);
+	EPD_4IN2_SendData(0x47);
+	EPD_4IN2_Partial_SetLut();
+
+	// do multiple times
+	for (UWORD areaIndex = 0; areaIndex < redraw_area_count; areaIndex++) {
+
+		X_start = redraw_areas[areaIndex].X_start;
+		X_end = redraw_areas[areaIndex].X_end;
+		Y_start = redraw_areas[areaIndex].Y_start;
+		Y_end = redraw_areas[areaIndex].Y_end;
+
+		Debug("DisplayMulti-foo: %d %d %d %d %d\r\n", areaIndex, X_start, Y_start, X_end, Y_end );
+
+
+		X_start = (X_start % 8 == 0)? (X_start): (X_start/8*8+8);
+    	X_end = (X_end % 8 == 0)? (X_end): (X_end/8*8+8);
+
+
+		EPD_4IN2_SendCommand(0x91);		//This command makes the display enter partial mode
+		EPD_4IN2_SendCommand(0x90);		//resolution setting
+
+    	EPD_4IN2_SendData ((X_start)/256);
+    	EPD_4IN2_SendData ((X_start)%256);   //x-start
+
+    	EPD_4IN2_SendData ((X_end )/256);
+    	EPD_4IN2_SendData ((X_end )%256-1);  //x-end
+
+    	EPD_4IN2_SendData (Y_start/256);
+    	EPD_4IN2_SendData (Y_start%256);   //y-start
+
+    	EPD_4IN2_SendData (Y_end/256);
+    	EPD_4IN2_SendData (Y_end%256-1);  //y-end
+    	EPD_4IN2_SendData (0x28);
+
+    	EPD_4IN2_SendCommand(0x10);	       //writes Old data to SRAM for programming
+        for (UWORD j = 0; j < Y_end - Y_start; j++) {
+            for (UWORD i = 0; i < (X_end - X_start)/8; i++) {
+                EPD_4IN2_SendData(Image[(Y_start + j)*Width + X_start/8 + i]);
+            }
+        }
+    	EPD_4IN2_SendCommand(0x13);				 //writes New data to SRAM.
+        for (UWORD j = 0; j < Y_end - Y_start; j++) {
+            for (UWORD i = 0; i < (X_end - X_start)/8; i++) {
+                EPD_4IN2_SendData(~Image[(Y_start + j)*Width + X_start/8 + i]);
+            }
+        }
+
+	}
+    // end: do multiple times
+	EPD_4IN2_SendCommand(0x12);		 //DISPLAY REFRESH
+	DEV_Delay_ms(10);     //The delay here is necessary, 200uS at least!!!
 	EPD_4IN2_TurnOnDisplay();
 }
 

@@ -1,6 +1,7 @@
 package waveshare
+// -Wall
 
-// #cgo CFLAGS: -g -Wall -I../c/lib/Config -I../c/lib/GUI -I../c/lib/e-Paper
+// #cgo CFLAGS: -g -I../c/lib/Config -I../c/lib/GUI -I../c/lib/e-Paper
 // #cgo LDFLAGS: -lwiringPi -lm ${SRCDIR}/lib/waveshare_4in2.o
 // #include <stdlib.h>
 // #include "DEV_Config.h"
@@ -25,6 +26,14 @@ const ROTATE_90       = C.ROTATE_90
 const ROTATE_180      = C.ROTATE_180
 const ROTATE_270      = C.ROTATE_270
 
+type RedrawArea struct {
+  X_start uint16
+  Y_start uint16
+  X_end uint16
+  Y_end uint16
+}
+
+
 func DEV_Module_Init() int {
   result := C.DEV_Module_Init()
   return int(result)
@@ -44,6 +53,11 @@ func EPD_4IN2_Display( imagePtr unsafe.Pointer ) {
 
 func EPD_4IN2_PartialDisplay( X_start uint16, Y_start uint16, X_end uint16, Y_end uint16, imagePtr unsafe.Pointer ) {
   C.EPD_4IN2_PartialDisplay( C.ushort(X_start), C.ushort(Y_start), C.ushort(X_end), C.ushort(Y_end), (*C.uchar)(imagePtr))
+}
+
+func EPD_4IN2_PartialDisplayMulti( redrawAreas *[]RedrawArea, areaCount uint16, imagePtr unsafe.Pointer ) {
+  println( (*C.EDP4IN2REDRAWAREA)(unsafe.Pointer( &(*redrawAreas)[0] )) )
+  C.EPD_4IN2_PartialDisplayMulti( (*C.EDP4IN2REDRAWAREA)(unsafe.Pointer( &(*redrawAreas)[0] )), C.ushort(areaCount), (*C.uchar)(imagePtr))
 }
 
 func DEV_Delay_ms( delay int ) {
